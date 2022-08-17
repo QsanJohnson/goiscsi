@@ -192,14 +192,19 @@ func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 		}
 	}
 
-	if disk.Valid && disk.DiskCnt > 0 {
-		if disk.DiskCnt == diskRunningNum {
-			disk.Status = "good"
-		} else if diskRunningNum == 0 {
-			disk.Status = "fail"
-		} else {
-			disk.Status = "degrade"
-		}
+	switch {
+	case disk.DiskCnt == 0:
+		disk.Status = "none"
+	case diskMatch == false:
+		disk.Status = "mismatch"
+	case disk.Valid && diskRunningNum == len(targets):
+		disk.Status = "online"
+	case disk.Valid && diskRunningNum == 0:
+		disk.Status = "offline"
+	case disk.Valid && diskRunningNum < len(targets):
+		disk.Status = "degrade"
+	default:
+		disk.Status = "unknown"
 	}
 
 	return disk, nil

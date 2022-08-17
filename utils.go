@@ -78,25 +78,25 @@ func getDevices(sessions []*Session, targets []*Target) (map[string]*Device, err
 		if exists {
 			args := []string{"-rn", "-o", "NAME,KNAME,PKNAME,TYPE,STATE,SIZE,VENDOR,MODEL,WWN"}
 			out, err := execCmd("lsblk", append(args, []string{devicePath}...)...)
-			if err != nil {
-				return nil, fmt.Errorf("Failed to get disk path : %v \n", err)
-			}
-
-			lines := strings.Split(strings.Trim(string(out), "\n"), "\n")
-			for _, line := range lines {
-				tokens := strings.Split(line, " ")
-				glog.V(3).Infof("[getDevices] deviceInfo %+v\n", tokens)
-				dev := &Device{
-					Name:   tokens[0],
-					Type:   tokens[3],
-					State:  tokens[4],
-					Size:   tokens[5],
-					Vendor: tokens[6],
-					Model:  tokens[7],
-					Serial: tokens[8],
+			if err == nil {
+				lines := strings.Split(strings.Trim(string(out), "\n"), "\n")
+				for _, line := range lines {
+					tokens := strings.Split(line, " ")
+					glog.V(3).Infof("[getDevices] deviceInfo %+v\n", tokens)
+					dev := &Device{
+						Name:   tokens[0],
+						Type:   tokens[3],
+						State:  tokens[4],
+						Size:   tokens[5],
+						Vendor: tokens[6],
+						Model:  tokens[7],
+						Serial: tokens[8],
+					}
+					devs = append(devs, dev)
+					devMap[tokens[1]] = dev
 				}
-				devs = append(devs, dev)
-				devMap[tokens[1]] = dev
+			} else {
+				fmt.Printf("Failed to get disk path : %v \n", err)
 			}
 		}
 	}

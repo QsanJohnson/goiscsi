@@ -29,17 +29,17 @@ type Disk struct {
 }
 ```
 > Disk Valid: true if the data of Disk structure is valid, false otherwise <br>
-> Disk Status: "good", "degrade" or "fail"
+> Disk Status: "online", "degrade", "offline", "mismatch" or "none"
 
 The below describes several use cases for Valid and Status value.
 
 Use case | Valid  | Status
 ---------|--------|-------
-Normal   | true   | good
-One device is offline | true | degrade
-All devices are offline | true | fail
-Devices are not match | false | 
-No device exists | false | 
+Normal   | true   | online
+One device is offline or non-exist | true | degrade
+All devices are offline | true | offline
+Devices are not match | false | mismatch
+No device exists | false | none
 
 
 ## Usage

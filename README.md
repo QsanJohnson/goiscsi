@@ -33,13 +33,13 @@ type Disk struct {
 
 The below describes several use cases for Valid and Status value.
 
-Valid | Status | Comments
-------|--------|-------
-true | good | Normal
-true | degrade | One device is offline
-true | fail | All devices are offline
-false |  | Devices are not match
-false |  | No device exists
+Use case | Valid  | Status
+---------|--------|-------
+Normal   | true   | good
+One device is offline | true | degrade
+All devices are offline | true | fail
+Devices are not match | false | 
+No device exists | false | 
 
 
 ## Usage

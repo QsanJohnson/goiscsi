@@ -1,6 +1,6 @@
 # goiscsi
-A go package for iSCSI utility to manage iSCSI disk.
-Functions
+A go package for iSCSI utility to manage iSCSI disk. <br>
+It provides the following functions,
 - Login
 - GetDisk
 - Logout
@@ -28,10 +28,10 @@ type Disk struct {
 	Devices               map[string]*Device
 }
 ```
-> Disk Valid: true if the data of Disk structure is valid, false otherwise
+> Disk Valid: true if the data of Disk structure is valid, false otherwise <br>
 > Disk Status: "good", "degrade" or "fail"
 
-The below describe several use case for Valid and Status value.
+The below describes several use cases for Valid and Status value.
 
 Valid | Status | Comments
 ------|--------|-------

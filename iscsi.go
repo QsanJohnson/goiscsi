@@ -67,11 +67,14 @@ const (
 
 func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 	success := false
+	needRescan := false
 	var err error
 	sessions := getSessions()
 	for _, target := range targets {
 		if targetSessionExists(sessions, target) {
 			glog.V(2).Infof("Target session is already exist: %+v\n", target)
+			needRescan = true
+			success = true
 			continue
 		}
 
@@ -102,6 +105,10 @@ func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 		} else {
 			success = true
 		}
+	}
+
+	if needRescan {
+		rescanSession()
 	}
 
 	if success {

@@ -55,6 +55,13 @@ func getSessions() []*Session {
 	return sessions
 }
 
+func rescanSession() {
+	args := []string{"-m", "session", "--rescan"}
+	if _, err := execCmd("iscsiadm", args...); err != nil {
+		glog.V(1).Infof("Failed to rescan session, err: %v", err)
+	}
+}
+
 func getDevices(sessions []*Session, targets []*Target) (map[string]*Device, error) {
 	var devs []*Device
 	devMap := make(map[string]*Device)

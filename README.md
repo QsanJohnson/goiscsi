@@ -10,7 +10,16 @@ It provides the following functions,
 - Support MPIO
 - Support timeout setting for iSCSI operation
 
-## Structure
+## Design
+### Login
+Returns nil as long as one target is successfully logged in; otherwise return error. <br>
+If target session already exists, bypass it and treat it as a successful login.
+
+### Logout
+Returns nil when all targets are successfully to logged out; otherwise return error. <br>
+If target session does not exist, bypass it and treat it as a successful logout.
+
+### GetDisk
 GetDisk function will return Disk structure as below,
 ```
 type Device struct {

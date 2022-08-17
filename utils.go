@@ -118,6 +118,16 @@ func lunSessionExists(sessions []*Session, target *Target) bool {
 	return false
 }
 
+func targetSessionExists(sessions []*Session, target *Target) bool {
+	for _, sess := range sessions {
+		if sess.Portal == target.Portal && sess.Target == target.Name {
+			return true
+		}
+	}
+
+	return false
+}
+
 func execCmd(name string, args ...string) (string, error) {
 	glog.V(3).Infof("[execCmd] %s, args=%+v \n", name, args)
 	cmd := exec.Command(name, args...)

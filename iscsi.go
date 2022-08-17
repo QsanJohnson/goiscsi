@@ -66,57 +66,84 @@ const (
 )
 
 func (iscsi *ISCSIUtil) Login(targets []*Target) error {
-	ctx := context.Background()
-	var cancel context.CancelFunc
-	if iscsi.Opts.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(context.Background(), iscsi.Opts.Timeout*time.Millisecond)
-		defer cancel()
-	}
-
+	success := false
+	var err error
+	sessions := getSessions()
 	for _, target := range targets {
+		if targetSessionExists(sessions, target) {
+			glog.V(2).Infof("Target session is already exist: %+v\n", target)
+			continue
+		}
+
 		baseArgs := []string{"-m", "node", "-T", target.Name, "-p", target.Portal}
-		if _, err := execCmd("iscsiadm", append(baseArgs, []string{"-o", "new"}...)...); err != nil {
-			return fmt.Errorf("Failed to new node, err: %v", err)
+		if _, err = execCmd("iscsiadm", append(baseArgs, []string{"-o", "new"}...)...); err != nil {
+			glog.V(1).Infof("Failed to new node, err: %v", err)
 		}
 
 		if target.Chap != nil {
-			if _, err := execCmd("iscsiadm", append(baseArgs, []string{"-o", "update",
+			if _, err = execCmd("iscsiadm", append(baseArgs, []string{"-o", "update",
 				"-n", "node.session.auth.authmethod", "-v", "CHAP",
 				"-n", "node.session.auth.username", "-v", target.Chap.User,
 				"-n", "node.session.auth.password", "-v", target.Chap.Passwd}...)...); err != nil {
 
-				return fmt.Errorf("Failed to set CHAP config, err: %v", err)
+				glog.V(1).Infof("Failed to set CHAP config, err: %v", err)
 			}
 		}
 
-		if _, err := execCmdContext(ctx, "iscsiadm", append(baseArgs, []string{"-l"}...)...); err != nil {
-			return fmt.Errorf("Failed to login, err: %v", err)
+		ctx := context.Background()
+		var cancel context.CancelFunc
+		if iscsi.Opts.Timeout > 0 {
+			ctx, cancel = context.WithTimeout(context.Background(), iscsi.Opts.Timeout*time.Millisecond)
+			defer cancel()
+		}
+
+		if _, err = execCmdContext(ctx, "iscsiadm", append(baseArgs, []string{"-l"}...)...); err != nil {
+			glog.V(1).Infof("Failed to login, err: %v", err)
+		} else {
+			success = true
 		}
 	}
 
-	return nil
+	if success {
+		return nil
+	} else {
+		return fmt.Errorf("Login failed, err: %v", err)
+	}
 }
 
 func (iscsi *ISCSIUtil) Logout(targets []*Target) error {
-	ctx := context.Background()
-	var cancel context.CancelFunc
-	if iscsi.Opts.Timeout > 0 {
-		ctx, cancel = context.WithTimeout(context.Background(), iscsi.Opts.Timeout*time.Millisecond)
-		defer cancel()
-	}
-
+	success := true
+	var err error
+	sessions := getSessions()
 	for _, target := range targets {
-		baseArgs := []string{"-m", "node", "-T", target.Name, "-p", target.Portal}
-		if _, err := execCmdContext(ctx, "iscsiadm", append(baseArgs, []string{"-u"}...)...); err != nil {
-			return fmt.Errorf("Failed to logout, err: %v", err)
+		if !targetSessionExists(sessions, target) {
+			glog.V(2).Infof("Target session not exist: %+v\n", target)
+			continue
 		}
 
-		if _, err := execCmd("iscsiadm", append(baseArgs, []string{"-o", "delete"}...)...); err != nil {
-			return fmt.Errorf("Failed to delete node, err: %v", err)
+		ctx := context.Background()
+		var cancel context.CancelFunc
+		if iscsi.Opts.Timeout > 0 {
+			ctx, cancel = context.WithTimeout(context.Background(), iscsi.Opts.Timeout*time.Millisecond)
+			defer cancel()
+		}
+
+		baseArgs := []string{"-m", "node", "-T", target.Name, "-p", target.Portal}
+		if _, err = execCmdContext(ctx, "iscsiadm", append(baseArgs, []string{"-u"}...)...); err != nil {
+			glog.V(1).Infof("Failed to logout, err: %v", err)
+		}
+
+		if _, err = execCmd("iscsiadm", append(baseArgs, []string{"-o", "delete"}...)...); err != nil {
+			glog.V(1).Infof("Failed to delete node, err: %v", err)
+			success = false
 		}
 	}
 
-	return nil
+	if success {
+		return nil
+	} else {
+		return fmt.Errorf("Login failed, err: %v", err)
+	}
 }
 
 func (iscsi *ISCSIUtil) GetSession() []*Session {

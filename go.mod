@@ -1,4 +1,4 @@
-module goiscsi
+module github.com/QsanJohnson/goiscsi
 
 go 1.17
 

@@ -15,7 +15,8 @@ type ISCSIUtil struct {
 }
 
 type ISCSIOptions struct {
-	Timeout time.Duration // Millisecond
+	Timeout   time.Duration // Millisecond
+	ForceMPIO bool
 }
 
 type Chap struct {
@@ -159,6 +160,7 @@ func (iscsi *ISCSIUtil) GetSession() []*Session {
 
 func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 	sessions := getSessions()
+	glog.V(3).Infof("[GetDisk] TargetCnt(%d) ForceMPIO(%v)", len(targets), iscsi.Opts.ForceMPIO)
 
 	var devMap map[string]*Device
 	var diskCnt, mpathCnt int
@@ -174,11 +176,20 @@ func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 			}
 		}
 
-		if mpathCnt == 0 && diskCnt > 0 {
-			glog.V(2).Infof("[GetDisk] sleep %d msec then try again, retries=%d\n", dmRetryTimeout, retries)
-			time.Sleep(time.Millisecond * dmRetryTimeout)
+		if iscsi.Opts.ForceMPIO && len(targets) > 1 {
+			if mpathCnt == 0 && diskCnt > 0 {
+				glog.V(2).Infof("[GetDisk] MPIO, sleep %d msec then try again, retries=%d\n", dmRetryTimeout, retries)
+				time.Sleep(time.Millisecond * dmRetryTimeout)
+			} else {
+				break
+			}
 		} else {
-			break
+			if diskCnt == 0 {
+				glog.V(2).Infof("[GetDisk] sleep %d msec then try again, retries=%d\n", dmRetryTimeout, retries)
+				time.Sleep(time.Millisecond * dmRetryTimeout)
+			} else {
+				break
+			}
 		}
 	}
 
@@ -222,6 +233,17 @@ func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 			if dev.Type == "disk" {
 				disk.Name = name
 				disk.Size = dev.Size
+				break
+			}
+		}
+	}
+
+	if !iscsi.Opts.ForceMPIO && disk.Valid && disk.DiskCnt == 1 {
+		for name, dev := range devMap {
+			if dev.Type == "disk" {
+				disk.Name = name
+				disk.Size = dev.Size
+				break
 			}
 		}
 	}

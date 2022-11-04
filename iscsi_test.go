@@ -26,6 +26,7 @@ func TestMain(m *testing.M) {
 		flag.Set("v", logLevelStr)
 	}
 
+	// iscsi = &ISCSIUtil{Opts: ISCSIOptions{Timeout: 5000, ForceMPIO: true}}
 	iscsi = &ISCSIUtil{Opts: ISCSIOptions{Timeout: 5000}}
 	// Here is an example to generate a test tgts directly
 	// tgts = []*Target{

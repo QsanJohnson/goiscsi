@@ -81,6 +81,20 @@ func TestGetDisk(t *testing.T) {
 	}
 }
 
+func TestRescanSession(t *testing.T) {
+	if err := iscsi.RescanAllSessions(); err != nil {
+		t.Fatalf("RescanAllSessions failed: %v", err)
+	} else {
+		fmt.Printf("RescanAllSessions succeed.\n")
+	}
+
+	if err := iscsi.RescanSessionByTarget(tgts); err != nil {
+		t.Fatalf("RescanSessionByTarget failed: %v", err)
+	} else {
+		fmt.Printf("RescanSessionByTarget succeed.\n")
+	}
+}
+
 func TestLogout(t *testing.T) {
 	err := iscsi.Logout(tgts)
 	if err != nil {

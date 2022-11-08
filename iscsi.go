@@ -109,7 +109,9 @@ func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 	}
 
 	if needRescan {
-		rescanSession()
+		if err = rescanSession(nil); err != nil {
+			glog.V(1).Infof("rescanSession err: %v", err)
+		}
 	}
 
 	if success {
@@ -156,6 +158,14 @@ func (iscsi *ISCSIUtil) Logout(targets []*Target) error {
 
 func (iscsi *ISCSIUtil) GetSession() []*Session {
 	return getSessions()
+}
+
+func (iscsi *ISCSIUtil) RescanAllSessions() error {
+	return rescanSession(nil)
+}
+
+func (iscsi *ISCSIUtil) RescanSessionByTarget(targets []*Target) error {
+	return rescanSession(targets)
 }
 
 func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {

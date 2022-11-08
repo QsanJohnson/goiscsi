@@ -55,11 +55,22 @@ func getSessions() []*Session {
 	return sessions
 }
 
-func rescanSession() {
-	args := []string{"-m", "session", "--rescan"}
-	if _, err := execCmd("iscsiadm", args...); err != nil {
-		glog.V(1).Infof("Failed to rescan session, err: %v", err)
+func rescanSession(targets []*Target) error {
+	if targets == nil {
+		args := []string{"-m", "session", "--rescan"}
+		if _, err := execCmd("iscsiadm", args...); err != nil {
+			return fmt.Errorf("Failed to rescan session, err: %v", err)
+		}
+	} else {
+		for _, target := range targets {
+			args := []string{"-m", "node", "-T", target.Name, "--rescan"}
+			if _, err := execCmd("iscsiadm", args...); err != nil {
+				return fmt.Errorf("Failed to rescan session of target(%s), err: %v", target.Name, err)
+			}
+		}
 	}
+
+	return nil
 }
 
 func getDevices(sessions []*Session, targets []*Target) (map[string]*Device, error) {

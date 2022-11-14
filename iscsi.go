@@ -60,8 +60,8 @@ type SCSIDevice struct {
 
 const (
 	defaultPort        = "3260"
-	deviceRetryCnt     = 50
-	deviceRetryTimeout = 100 // Millisecond
+	deviceRetryCnt     = 30
+	deviceRetryTimeout = 1000 // Millisecond
 	dmRetryCnt         = 30
 	dmRetryTimeout     = 100 // Millisecond
 )
@@ -73,7 +73,7 @@ func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 	sessions := getSessions()
 	for _, target := range targets {
 		if targetSessionExists(sessions, target) {
-			glog.V(2).Infof("Target session is already exist: %+v\n", target)
+			glog.V(1).Infof("Target session is already exist: %+v\n", target)
 			needRescan = true
 			success = true
 			continue
@@ -81,7 +81,7 @@ func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 
 		baseArgs := []string{"-m", "node", "-T", target.Name, "-p", target.Portal}
 		if _, err = execCmd("iscsiadm", append(baseArgs, []string{"-o", "new"}...)...); err != nil {
-			glog.V(1).Infof("Failed to new node, err: %v", err)
+			glog.Errorf("Failed to new node, err: %v", err)
 		}
 
 		if target.Chap != nil {
@@ -90,7 +90,7 @@ func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 				"-n", "node.session.auth.username", "-v", target.Chap.User,
 				"-n", "node.session.auth.password", "-v", target.Chap.Passwd}...)...); err != nil {
 
-				glog.V(1).Infof("Failed to set CHAP config, err: %v", err)
+				glog.Errorf("Failed to set CHAP config, err: %v", err)
 			}
 		}
 
@@ -102,7 +102,7 @@ func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 		}
 
 		if _, err = execCmdContext(ctx, "iscsiadm", append(baseArgs, []string{"-l"}...)...); err != nil {
-			glog.V(1).Infof("Failed to login, err: %v", err)
+			glog.Errorf("Failed to login, err: %v", err)
 		} else {
 			success = true
 		}
@@ -110,7 +110,7 @@ func (iscsi *ISCSIUtil) Login(targets []*Target) error {
 
 	if needRescan {
 		if err = rescanSession(nil); err != nil {
-			glog.V(1).Infof("rescanSession err: %v", err)
+			glog.Errorf("rescanSession err: %v", err)
 		}
 	}
 
@@ -127,7 +127,7 @@ func (iscsi *ISCSIUtil) Logout(targets []*Target) error {
 	sessions := getSessions()
 	for _, target := range targets {
 		if !targetSessionExists(sessions, target) {
-			glog.V(2).Infof("Target session not exist: %+v\n", target)
+			glog.Warningf("Target session not exist: %+v\n", target)
 			continue
 		}
 
@@ -140,11 +140,11 @@ func (iscsi *ISCSIUtil) Logout(targets []*Target) error {
 
 		baseArgs := []string{"-m", "node", "-T", target.Name, "-p", target.Portal}
 		if _, err = execCmdContext(ctx, "iscsiadm", append(baseArgs, []string{"-u"}...)...); err != nil {
-			glog.V(1).Infof("Failed to logout, err: %v", err)
+			glog.Errorf("Failed to logout, err: %v", err)
 		}
 
 		if _, err = execCmd("iscsiadm", append(baseArgs, []string{"-o", "delete"}...)...); err != nil {
-			glog.V(1).Infof("Failed to delete node, err: %v", err)
+			glog.Errorf("Failed to delete node, err: %v", err)
 			success = false
 		}
 	}
@@ -152,7 +152,7 @@ func (iscsi *ISCSIUtil) Logout(targets []*Target) error {
 	if success {
 		return nil
 	} else {
-		return fmt.Errorf("Login failed, err: %v", err)
+		return fmt.Errorf("Logout failed, err: %v", err)
 	}
 }
 
@@ -170,7 +170,7 @@ func (iscsi *ISCSIUtil) RescanSessionByTarget(targets []*Target) error {
 
 func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 	sessions := getSessions()
-	glog.V(3).Infof("[GetDisk] TargetCnt(%d) ForceMPIO(%v)", len(targets), iscsi.Opts.ForceMPIO)
+	glog.V(2).Infof("[GetDisk] TargetCnt(%d) ForceMPIO(%v)", len(targets), iscsi.Opts.ForceMPIO)
 
 	var devMap map[string]*Device
 	var diskCnt, mpathCnt int
@@ -188,14 +188,14 @@ func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 
 		if iscsi.Opts.ForceMPIO && len(targets) > 1 {
 			if mpathCnt == 0 && diskCnt > 0 {
-				glog.V(2).Infof("[GetDisk] MPIO, sleep %d msec then try again, retries=%d\n", dmRetryTimeout, retries)
+				glog.Warningf("[GetDisk] MPIO, sleep %d msec then try again, retries=%d\n", dmRetryTimeout, retries)
 				time.Sleep(time.Millisecond * dmRetryTimeout)
 			} else {
 				break
 			}
 		} else {
 			if diskCnt == 0 {
-				glog.V(2).Infof("[GetDisk] sleep %d msec then try again, retries=%d\n", dmRetryTimeout, retries)
+				glog.Warningf("[GetDisk] sleep %d msec then try again, retries=%d\n", dmRetryTimeout, retries)
 				time.Sleep(time.Millisecond * dmRetryTimeout)
 			} else {
 				break

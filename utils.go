@@ -15,13 +15,15 @@ import (
 )
 
 func getSessions() []*Session {
+	var sessions []*Session
+
 	args := []string{"-m", "session", "-P", "3"}
 	out, err := execCmd("iscsiadm", args...)
 	if err != nil {
-		fmt.Errorf("Failed to get session, err: %v", err)
+		glog.Warningf("Failed to get session, err: %v", err)
+		return sessions
 	}
 
-	var sessions []*Session
 	var curTarget string
 	var curSession *Session
 	var scsiDev *SCSIDevice
@@ -85,7 +87,7 @@ func getDevices(sessions []*Session, targets []*Target) (map[string]*Device, err
 		for retries := 1; retries <= deviceRetryCnt; retries++ {
 			_, err := os.Stat(devicePath)
 			if os.IsNotExist(err) && lunSessionExists(sessions, target) {
-				glog.V(2).Infof("[getDevices] sleep %d msec then try again, retries=%d (%s)\n", deviceRetryTimeout, retries, devicePath)
+				glog.V(3).Infof("[getDevices] sleep %d msec then try again, retries=%d (%s)\n", deviceRetryTimeout, retries, devicePath)
 				time.Sleep(time.Millisecond * deviceRetryTimeout)
 			} else {
 				exists = true
@@ -100,7 +102,7 @@ func getDevices(sessions []*Session, targets []*Target) (map[string]*Device, err
 				lines := strings.Split(strings.Trim(string(out), "\n"), "\n")
 				for _, line := range lines {
 					tokens := strings.Split(line, " ")
-					glog.V(3).Infof("[getDevices] deviceInfo %+v\n", tokens)
+					glog.V(2).Infof("[getDevices] deviceInfo %+v\n", tokens)
 					dev := &Device{
 						Name:   tokens[0],
 						Type:   tokens[3],
@@ -150,7 +152,7 @@ func execCmd(name string, args ...string) (string, error) {
 	glog.V(3).Infof("[execCmd] %s, args=%+v \n", name, args)
 	cmd := exec.Command(name, args...)
 	out, err := cmd.CombinedOutput()
-	glog.V(3).Infof("[execCmd] Output ==>\n%+v\n", string(out))
+	glog.V(4).Infof("[execCmd] Output ==>\n%+v\n", string(out))
 	if err != nil {
 		return "", fmt.Errorf("%s (%s)\n", strings.TrimRight(string(out), "\n"), err)
 	}

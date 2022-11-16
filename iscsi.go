@@ -275,3 +275,18 @@ func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 
 	return disk, nil
 }
+
+func (iscsi *ISCSIUtil) IsSessionExist(targets []*Target) bool {
+	sessions := getSessions()
+	for _, target := range targets {
+		if targetSessionExists(sessions, target) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (iscsi *ISCSIUtil) HasAnotherUsedDisk(targets []*Target) (bool, error) {
+	return hasMntDevices(targets)
+}

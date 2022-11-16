@@ -5,6 +5,7 @@ package goiscsi
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"strconv"
@@ -122,6 +123,43 @@ func getDevices(sessions []*Session, targets []*Target) (map[string]*Device, err
 	}
 
 	return devMap, nil
+}
+
+func hasMntDevices(targets []*Target) (bool, error) {
+	cnt, total := 0, 0
+	prefixDir := "/dev/disk/by-path/"
+	for _, target := range targets {
+		devPrefixName := strings.Join([]string{"ip", target.Portal, "iscsi", target.Name, "lun"}, "-")
+
+		files, err := ioutil.ReadDir(prefixDir)
+		if err != nil {
+			return false, fmt.Errorf("Failed to ReadDir: %v", err)
+		}
+
+		for _, file := range files {
+			if strings.HasPrefix(file.Name(), devPrefixName) {
+				total++
+
+				args := []string{"-rn", "-o", "MOUNTPOINT"}
+				devicePath := prefixDir + file.Name()
+				out, err := execCmd("lsblk", append(args, []string{devicePath}...)...)
+				if err == nil {
+					mntPath := strings.Trim(string(out), "\n")
+					if len(mntPath) > 0 {
+						glog.V(2).Infof("[hasMntDevices] %s, mountpoint(%s)\n", file.Name(), mntPath)
+						cnt++
+					}
+				}
+			}
+		}
+	}
+
+	glog.V(2).Infof("[hasMntDevices] cnt: %d/%d\n", cnt, total)
+	if cnt > 0 {
+		return true, nil
+	} else {
+		return false, nil
+	}
 }
 
 func lunSessionExists(sessions []*Session, target *Target) bool {

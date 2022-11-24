@@ -81,6 +81,10 @@ func TestGetDisk(t *testing.T) {
 	}
 }
 
+func TestHasAnotherUsedDisk(t *testing.T) {
+	iscsi.HasAnotherUsedDisk(tgts)
+}
+
 func TestRescanSession(t *testing.T) {
 	if err := iscsi.RescanAllSessions(); err != nil {
 		t.Fatalf("RescanAllSessions failed: %v", err)

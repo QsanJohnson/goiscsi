@@ -13,6 +13,8 @@ import (
 	"time"
 
 	"github.com/golang/glog"
+	kexec "k8s.io/utils/exec"
+	mount "k8s.io/utils/mount"
 )
 
 func getSessions() []*Session {
@@ -128,6 +130,8 @@ func getDevices(sessions []*Session, targets []*Target) (map[string]*Device, err
 func hasMntDevices(targets []*Target) (bool, error) {
 	cnt, total := 0, 0
 	prefixDir := "/dev/disk/by-path/"
+
+	var devPaths []string
 	for _, target := range targets {
 		devPrefixName := strings.Join([]string{"ip", target.Portal, "iscsi", target.Name, "lun"}, "-")
 
@@ -140,11 +144,14 @@ func hasMntDevices(targets []*Target) (bool, error) {
 			if strings.HasPrefix(file.Name(), devPrefixName) {
 				total++
 
-				args := []string{"-rn", "-o", "MOUNTPOINT"}
+				args := []string{"-rn", "-o", "NAME,KNAME,MOUNTPOINT"}
 				devicePath := prefixDir + file.Name()
 				out, err := execCmd("lsblk", append(args, []string{devicePath}...)...)
 				if err == nil {
-					mntPath := strings.Trim(string(out), "\n")
+					line := strings.Trim(string(out), "\n")
+					tokens := strings.Split(line, " ")
+					devPaths = append(devPaths, tokens[1])
+					mntPath := tokens[2]
 					if len(mntPath) > 0 {
 						glog.V(2).Infof("[hasMntDevices] %s, mountpoint(%s)\n", file.Name(), mntPath)
 						cnt++
@@ -154,7 +161,37 @@ func hasMntDevices(targets []*Target) (bool, error) {
 		}
 	}
 
-	glog.V(2).Infof("[hasMntDevices] cnt: %d/%d\n", cnt, total)
+	glog.V(2).Infof("[hasMntDevices] cnt: %d/%d, devPaths: %+v\n", cnt, total, devPaths)
+
+	mounter := &mount.SafeFormatAndMount{
+		Interface: mount.New(""),
+		Exec:      kexec.New(),
+	}
+	mnts, err := mounter.List()
+	if err != nil {
+		glog.V(2).Infof("[hasMntDevices] List mount err: %v\n", err)
+	}
+	for _, mp := range mnts {
+		var devName string
+		if mp.Device == "udev" {
+			args := []string{"-rn", "-o", "KNAME"}
+			out, err := execCmd("lsblk", append(args, []string{mp.Path}...)...)
+			if err == nil {
+				devName = strings.Trim(string(out), "\n")
+			}
+
+		} else if strings.HasPrefix(mp.Device, "/dev/") {
+			devName = mp.Device[5:]
+		} else {
+			continue
+		}
+
+		if len(devName) > 0 && contains(devPaths, devName) {
+			glog.V(2).Infof("[hasMntDevices] Found %s path(%s) devName(%s)\n", mp.Device, mp.Path, devName)
+			return true, nil
+		}
+	}
+
 	if cnt > 0 {
 		return true, nil
 	} else {
@@ -232,4 +269,14 @@ func replaceEmpty(s string) string {
 		return ""
 	}
 	return s
+}
+
+func contains(s []string, str string) bool {
+	for _, v := range s {
+		if v == str {
+			return true
+		}
+	}
+
+	return false
 }

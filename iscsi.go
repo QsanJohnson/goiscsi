@@ -5,6 +5,7 @@ package goiscsi
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/golang/glog"
@@ -274,6 +275,25 @@ func (iscsi *ISCSIUtil) GetDisk(targets []*Target) (*Disk, error) {
 	}
 
 	return disk, nil
+}
+
+func (iscsi *ISCSIUtil) RemoveDisk(devPath string) error {
+	if strings.HasPrefix(devPath, "/dev/") {
+		devName := devPath[5:]
+		devFile := fmt.Sprintf("/sys/block/%s/device/state", devName)
+		if err := writeDeviceFile(devFile, "offline\n"); err != nil {
+			return err
+		}
+
+		devFile = fmt.Sprintf("/sys/block/%s/device/delete", devName)
+		if err := writeDeviceFile(devFile, "1"); err != nil {
+			return err
+		}
+	} else {
+		return fmt.Errorf("[RemoveDisk] invalid dev path: %s\n", devPath)
+	}
+
+	return nil
 }
 
 func (iscsi *ISCSIUtil) IsSessionExist(targets []*Target) bool {
